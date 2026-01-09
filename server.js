@@ -8,8 +8,10 @@ const crypto = require('crypto');
 const { initDatabase, runQuery, getOne, getAll, getLastInsertId, saveDatabase } = require('./database');
 const multer = require('multer');
 const { generateInvoice, generateReceipt } = require('./services/pdfService');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
-// Multer設定
+// Multer設定（セキュリティ強化版）
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'public/uploads/');
@@ -20,7 +22,24 @@ const storage = multer.diskStorage({
         cb(null, 'product-' + uniqueSuffix + ext);
     }
 });
-const upload = multer({ storage: storage });
+
+// ファイルフィルター（画像のみ許可）
+const fileFilter = (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('画像ファイル(JPEG, PNG, WebP)のみアップロード可能です'), false);
+    }
+};
+
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB制限
+    }
+});
 
 const app = express();
 const PORT = 3000;
@@ -74,17 +93,43 @@ initDatabase().then(() => {
     console.log('データベース準備完了');
 });
 
+// セキュリティミドルウェア
+app.use(helmet({
+    contentSecurityPolicy: false // 必要に応じて設定
+}));
+
+// レート制限（全体）
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15分
+    max: 100, // 100リクエスト/15分
+    message: 'リクエストが多すぎます。しばらくしてから再試行してください。'
+});
+
+// レート制限（ログイン専用）
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15分
+    max: 5, // 5回まで
+    message: 'ログイン試行回数が多すぎます。15分後に再試行してください。'
+});
+
+app.use('/api/', generalLimiter);
+
 // ミドルウェア
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// セッション設定（環境変数対応）
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-    secret: 'protein-order-secret-key-2024',
+    secret: process.env.SESSION_SECRET || 'protein-order-secret-key-2024-CHANGE-THIS',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
-        maxAge: 24 * 60 * 60 * 1000
+        secure: isProduction, // 本番環境ではHTTPSのみ
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: 'strict'
     }
 }));
 
@@ -168,7 +213,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
 
