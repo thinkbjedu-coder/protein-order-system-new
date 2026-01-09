@@ -120,16 +120,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // セッション設定（環境変数対応）
-const isProduction = process.env.NODE_ENV === 'production';
+// Renderはリバースプロキシ経由なので、secure: falseに設定
 app.use(session({
     secret: process.env.SESSION_SECRET || 'protein-order-secret-key-2024-CHANGE-THIS',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: isProduction, // 本番環境ではHTTPSのみ
+        secure: false, // Renderのプロキシ経由のため、falseに設定
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'strict'
+        sameSite: 'lax' // strictだとリダイレクト時にCookieが送信されない
     }
 }));
 
