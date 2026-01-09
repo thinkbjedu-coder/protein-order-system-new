@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ホーム - プロテイン注文システム</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- サイドバー -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/home.html" class="sidebar-logo">Think Body Japan</a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/home.html" class="nav-item active">
+                    <span class="nav-item-icon">🏠</span>
+                    ホーム
+                </a>
+                <a href="/order.html" class="nav-item">
+                    <span class="nav-item-icon">🛒</span>
+                    新規注文
+                </a>
+                <a href="/history.html" class="nav-item">
+                    <span class="nav-item-icon">📋</span>
+                    注文履歴
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="nav-item-icon">👤</span>
+                    会員情報
+                </a>
+                <a href="/shipping.html" class="nav-item">
+                    <span class="nav-item-icon">📦</span>
+                    配送先管理
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button onclick="logout()" class="btn btn-outline btn-block">ログアウト</button>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">ホーム</h1>
+                <div class="header-actions">
+                    <span id="user-name"></span>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="alert-container"></div>
+
+                <!-- ウェルカムカード -->
+                <div class="card mb-xl">
+                    <div class="card-body">
+                        <h2 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-md);">
+                            ようこそ、<span id="company-name"></span>様
+                        </h2>
+                    </div>
+                </div>
+
+                <!-- クイックアクション -->
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
+                    <a href="/order.html" class="card" style="text-decoration: none; color: inherit;">
+                        <div class="card-body">
+                            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">🛒</div>
+                            <h3 style="font-size: var(--font-size-xl); margin-bottom: var(--spacing-sm);">新規注文</h3>
+                            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                プロテインを注文する
+                            </p>
+                        </div>
+                    </a>
+
+                    <a href="/history.html" class="card" style="text-decoration: none; color: inherit;">
+                        <div class="card-body">
+                            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📋</div>
+                            <h3 style="font-size: var(--font-size-xl); margin-bottom: var(--spacing-sm);">注文履歴</h3>
+                            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                過去の注文を確認する
+                            </p>
+                        </div>
+                    </a>
+
+                    <a href="/shipping.html" class="card" style="text-decoration: none; color: inherit;">
+                        <div class="card-body">
+                            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📦</div>
+                            <h3 style="font-size: var(--font-size-xl); margin-bottom: var(--spacing-sm);">配送先管理</h3>
+                            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                配送先を登録・編集する
+                            </p>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 最近の注文 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">最近の注文</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="recent-orders"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        // ユーザー情報取得
+        async function loadUserInfo() {
+            try {
+                const user = await apiRequest('/api/me');
+                document.getElementById('user-name').textContent = `${user.last_name} ${user.first_name}`;
+                document.getElementById('company-name').textContent = user.company_name;
+            } catch (error) {
+                console.error('User info error:', error);
+            }
+        }
+
+        // 最近の注文取得
+        async function loadRecentOrders() {
+            try {
+                const orders = await apiRequest('/api/orders');
+                const container = document.getElementById('recent-orders');
+
+                if (orders.length === 0) {
+                    container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📦</div>
+              <h3 class="empty-state-title">注文履歴がありません</h3>
+              <p class="empty-state-description">まだ注文がありません。新規注文から商品を注文してください。</p>
+              <a href="/order.html" class="btn btn-primary">新規注文</a>
+            </div>
+          `;
+                    return;
+                }
+
+                const recentOrders = orders.slice(0, 5);
+                const html = `
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>注文ID</th>
+                  <th>数量</th>
+                  <th>合計金額</th>
+                  <th>ステータス</th>
+                  <th>注文日時</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentOrders.map(order => `
+                  <tr>
+                    <td>#${order.id}</td>
+                    <td>${order.quantity}袋</td>
+                    <td>${formatPrice(order.total_price)}</td>
+                    <td>${getStatusBadge(order.status)}</td>
+                    <td>${formatDate(order.created_at)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top: var(--spacing-md); text-align: center;">
+            <a href="/history.html" class="btn btn-outline">すべての注文を見る</a>
+          </div>
+        `;
+
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Orders error:', error);
+            }
+        }
+
+        // ページ読み込み時
+        loadUserInfo();
+        loadRecentOrders();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - プロテイン注文システム</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .admin-login {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .admin-container {
+            width: 100%;
+            max-width: 400px;
+            padding: var(--spacing-md);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ログイン画面 -->
+    <div id="login-screen" class="admin-login">
+        <div class="admin-container">
+            <div class="card">
+                <div class="card-header" style="background: var(--color-primary); color: white; text-align: center;">
+                    <h1 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">🔐 管理画面</h1>
+                    <p style="font-size: var(--font-size-sm); opacity: 0.9;">Think Body Japan Admin Panel</p>
+                </div>
+                <div class="card-body">
+                    <div id="login-alert"></div>
+                    <form id="admin-login-form">
+                        <div class="form-group">
+                            <label class="form-label required">ユーザー名</label>
+                            <input type="text" class="form-input" name="username" required autofocus>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">パスワード</label>
+                            <input type="password" class="form-input" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">ログイン</button>
+                    </form>
+                    <p
+                        style="margin-top: var(--spacing-md); font-size: var(--font-size-xs); color: var(--color-text-secondary); text-align: center;">
+                        デフォルト: admin / admin123
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理画面 -->
+    <div id="admin-screen" class="app-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🔐 ADMIN</div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+                    <span class="nav-item-icon">📊</span>
+                    ダッシュボード
+                </a>
+                <a href="#" class="nav-item" id="nav-orders" onclick="switchTab('orders')">
+                    <span class="nav-item-icon">📋</span>
+                    注文管理
+                </a>
+                <a href="#" class="nav-item" id="nav-products" onclick="switchTab('products')">
+                    <span class="nav-item-icon">📦</span>
+                    商品管理
+                </a>
+                <a href="#" class="nav-item" id="nav-users" onclick="switchTab('users')">
+                    <span class="nav-item-icon">👤</span>
+                    ユーザー管理
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="adminLogout()" class="btn btn-outline btn-block">ログアウト</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title" id="admin-title">注文管理</h1>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refresh-btn" onclick="loadCurrentTab()">🔄 更新</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="admin-alert"></div>
+
+                <!-- ダッシュボードコンテンツ -->
+                <div id="dashboard-content">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                        <h2 style="font-size: var(--font-size-xl);">売上サマリー</h2>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="dashboard-month"
+                                style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">対象月:</label>
+                            <input type="month" id="dashboard-month" class="form-input"
+                                style="width: auto; padding: 4px 8px;">
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="margin-bottom: var(--spacing-lg);">
+                        <div class="stat-card">
+                            <div class="stat-label" id="label-month-sales">今月の売上</div>
+                            <div class="stat-value" id="stat-month-sales">¥0</div>
+                            <div class="stat-trend" id="stat-growth-rate">
+                                <span>--%</span>
+                                <span>前月比</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label" id="label-month-orders">今月の注文数</div>
+                            <div class="stat-value" id="stat-month-orders">0件</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label" id="label-month-quantity">今月の販売数</div>
+                            <div class="stat-value" id="stat-month-quantity">0個</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">総注文数</div>
+                            <div class="stat-value" id="stat-total-orders">0件</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">稼働商品数</div>
+                            <div class="stat-value" id="stat-active-products">0</div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-lg);">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">売上推移 (過去6ヶ月)</h3>
+                            </div>
+                            <div class="card-body" style="height: 300px; position: relative;">
+                                <canvas id="salesChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">商品別売上ランキング</h3>
+                            </div>
+                            <div class="card-body" style="height: 300px; position: relative;">
+                                <canvas id="productChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 注文管理コンテンツ -->
+                <div id="orders-content" style="display: none;">
+                    <div class="card mb-md">
+                        <div class="card-body">
+                            <!-- 検索バー -->
+                            <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                                <input type="text" id="order-search" class="form-input" placeholder="🔍 事業者名、注文番号で検索..."
+                                    style="flex: 1;">
+                                <button class="btn btn-primary" onclick="exportOrdersToCSV()">📥 CSV出力</button>
+                            </div>
+
+                            <!-- フィルター -->
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+                                <div class="form-group" style="margin: 0;">
+                                    <label class="form-label" style="font-size: var(--font-size-sm);">開始日</label>
+                                    <input type="date" id="filter-date-from" class="form-input"
+                                        style="padding: 6px 8px;">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label class="form-label" style="font-size: var(--font-size-sm);">終了日</label>
+                                    <input type="date" id="filter-date-to" class="form-input" style="padding: 6px 8px;">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label class="form-label" style="font-size: var(--font-size-sm);">ステータス</label>
+                                    <select id="filter-status" class="form-select" style="padding: 6px 8px;">
+                                        <option value="">すべて</option>
+                                        <option value="処理中">処理中</option>
+                                        <option value="受付">受付</option>
+                                        <option value="準備中">準備中</option>
+                                        <option value="発送完了">発送完了</option>
+                                        <option value="到着">到着</option>
+                                        <option value="保留">保留</option>
+                                        <option value="キャンセル">キャンセル</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label class="form-label" style="font-size: var(--font-size-sm);">入金状況</label>
+                                    <select id="filter-payment" class="form-select" style="padding: 6px 8px;">
+                                        <option value="">すべて</option>
+                                        <option value="1">入金済み</option>
+                                        <option value="0">未入金</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- フィルタークリアボタン -->
+                            <div style="margin-top: var(--spacing-md); text-align: right;">
+                                <button class="btn btn-sm btn-outline" onclick="clearOrderFilters()">🔄
+                                    フィルターをクリア</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="orders-table"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ユーザー管理コンテンツ -->
+                <div id="users-content" style="display: none;">
+                    <div class="stats-grid" id="users-stats" style="margin-bottom: var(--spacing-lg);">
+                        <!-- 会員数がここに表示されます -->
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="users-table"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 商品管理コンテンツ -->
+                <div id="products-content" style="display: none;">
+                    <div class="card mb-md">
+                        <div class="card-body">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h2 style="font-size: var(--font-size-xl);">商品一覧</h2>
+                                <button class="btn btn-primary" onclick="showProductModal()">➕ 商品追加</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="products-table"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ステータス更新モーダル -->
+    <div id="status-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">ステータス更新</h3>
+                <button class="modal-close" onclick="closeModal('status-modal')">×</button>
+            </div>
+            <form id="status-form">
+                <div class="modal-body">
+                    <input type="hidden" id="status-order-id">
+                    <div class="form-group">
+                        <label class="form-label required">ステータス</label>
+                        <select class="form-select" name="status" required>
+                            <option value="受付">受付</option>
+                            <option value="準備中">準備中</option>
+                            <option value="発送完了">発送完了</option>
+                            <option value="到着">到着</option>
+                            <option value="保留">保留</option>
+                            <option value="キャンセル">キャンセル</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('status-modal')">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">更新</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 入金確認モーダル -->
+    <div id="payment-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">💰 入金確認</h3>
+                <button class="modal-close" onclick="closeModal('payment-modal')">×</button>
+            </div>
+            <form id="payment-form">
+                <div class="modal-body">
+                    <input type="hidden" id="payment-order-id">
+                    <div class="form-group">
+                        <label class="form-label required">入金日</label>
+                        <input type="date" class="form-input" id="payment-date-input" name="payment_date" required>
+                    </div>
+                    <div
+                        style="background-color: #f0f9ff; padding: var(--spacing-md); border-radius: var(--border-radius); border-left: 4px solid #0ea5e9;">
+                        <p style="margin: 0; font-size: var(--font-size-sm); color: #0c4a6e;">
+                            💡 入金確認後、この注文は「入金済み」としてマークされます。
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('payment-modal')">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">入金確認</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 注文詳細モーダル -->
+    <div id="detail-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">注文詳細</h3>
+                <button class="modal-close" onclick="closeModal('detail-modal')">×</button>
+            </div>
+            <div class="modal-body" id="detail-content">
+                <!-- 詳細内容がここに表示されます -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('detail-modal')">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品編集モーダル -->
+    <div id="product-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="product-modal-title">商品編集</h3>
+                <button class="modal-close" onclick="closeModal('product-modal')">×</button>
+            </div>
+            <form id="product-form">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="product-id">
+                    <div class="form-group">
+                        <label class="form-label required">商品名</label>
+                        <input type="text" class="form-input" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">フレーバー/味</label>
+                        <input type="text" class="form-input" name="flavor">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">価格 (税込)</label>
+                        <input type="number" class="form-input" name="price" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">最小注文数</label>
+                        <input type="number" class="form-input" name="min_quantity" value="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">注文ステップ (単位)</label>
+                        <input type="number" class="form-input" name="quantity_step" value="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">商品画像</label>
+                        <div id="current-image-preview" style="margin-bottom: var(--spacing-sm); display: none;">
+                            <img src="" alt="現在の画像" id="current-image-img"
+                                style="max-width: 100%; height: 200px; object-fit: contain; border: 1px solid var(--color-border); border-radius: var(--border-radius-sm);">
+                        </div>
+
+                        <!-- ドラッグ&ドロップエリア -->
+                        <div id="image-drop-zone" style="
+                            border: 2px dashed var(--color-border);
+                            border-radius: var(--border-radius);
+                            padding: var(--spacing-lg);
+                            text-align: center;
+                            background-color: var(--color-bg-secondary);
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <div id="drop-zone-content">
+                                <div style="font-size: 48px; margin-bottom: var(--spacing-sm);">📸</div>
+                                <p style="margin: 0 0 var(--spacing-xs) 0; font-weight: 500;">画像をドラッグ&ドロップ</p>
+                                <p
+                                    style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                                    または<span
+                                        style="color: var(--color-primary); text-decoration: underline;">クリックして選択</span>
+                                </p>
+                            </div>
+                            <div id="image-preview-container" style="display: none; position: relative;">
+                                <img id="image-preview" src="" alt="プレビュー"
+                                    style="max-width: 100%; height: 200px; object-fit: contain; border-radius: var(--border-radius-sm);">
+                                <button type="button" id="remove-image-btn" style="
+                                    position: absolute;
+                                    top: 8px;
+                                    right: 8px;
+                                    background: rgba(220, 38, 38, 0.9);
+                                    color: white;
+                                    border: none;
+                                    border-radius: 50%;
+                                    width: 32px;
+                                    height: 32px;
+                                    cursor: pointer;
+                                    font-size: 18px;
+                                    line-height: 1;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">×</button>
+                            </div>
+                        </div>
+                        <input type="file" id="product-image-input" class="form-input" name="image" accept="image/*"
+                            style="display: none;">
+                        <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 4px;">
+                            ※画像を変更しない場合は空のままにしてください
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">商品説明</label>
+                        <textarea class="form-textarea" name="description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">キャッチコピー（青文字部分）</label>
+                        <textarea class="form-textarea" name="catch_copy"
+                            placeholder="高齢者でも安心して始めやすい&#10;続けやすいプロテインです"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ステータス</label>
+                        <select class="form-select" name="is_active">
+                            <option value="1">公開中</option>
+                            <option value="0">停止中</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('product-modal')">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/admin.js"></script>
+</body>
+
+</html>

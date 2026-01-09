@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会員情報 - プロテイン注文システム</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/home.html" class="sidebar-logo">Think Body Japan</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/home.html" class="nav-item"><span class="nav-item-icon">🏠</span> ホーム</a>
+                <a href="/order.html" class="nav-item"><span class="nav-item-icon">🛒</span> 新規注文</a>
+                <a href="/history.html" class="nav-item"><span class="nav-item-icon">📋</span> 注文履歴</a>
+                <a href="/profile.html" class="nav-item active"><span class="nav-item-icon">👤</span> 会員情報</a>
+                <a href="/shipping.html" class="nav-item"><span class="nav-item-icon">📦</span> 配送先管理</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="logout()" class="btn btn-outline btn-block">ログアウト</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">会員情報</h1>
+            </header>
+
+            <div class="content">
+                <div id="alert-container"></div>
+                <form id="profile-form" class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">基本情報</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+                            <div class="form-group">
+                                <label class="form-label required">姓</label>
+                                <input type="text" class="form-input" name="last_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label required">名</label>
+                                <input type="text" class="form-input" name="first_name" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required">事業者名</label>
+                            <input type="text" class="form-input" name="company_name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">メールアドレス</label>
+                            <input type="email" class="form-input" name="email" disabled>
+                            <p class="form-help">メールアドレスは変更できません</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required">電話番号</label>
+                            <input type="tel" class="form-input" name="phone" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">郵便番号</label>
+                            <input type="text" class="form-input" name="postal_code">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">住所</label>
+                            <input type="text" class="form-input" name="address">
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">更新する</button>
+                    </div>
+                </form>
+
+                <form id="password-form" class="card" style="margin-top: var(--spacing-xl);">
+                    <div class="card-header">
+                        <h3 class="card-title">パスワード変更</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label required">現在のパスワード</label>
+                            <input type="password" class="form-input" name="current_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">新しいパスワード</label>
+                            <input type="password" class="form-input" name="new_password" required placeholder="8文字以上">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">新しいパスワード（確認）</label>
+                            <input type="password" class="form-input" name="new_password_confirm" required>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">パスワードを変更する</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        async function loadProfile() {
+            try {
+                const user = await apiRequest('/api/me');
+                const form = document.getElementById('profile-form');
+
+                form.elements.last_name.value = user.last_name;
+                form.elements.first_name.value = user.first_name;
+                form.elements.company_name.value = user.company_name;
+                form.elements.email.value = user.email;
+                form.elements.phone.value = user.phone;
+                form.elements.postal_code.value = user.postal_code || '';
+                form.elements.address.value = user.address || '';
+            } catch (error) {
+                console.error('Profile load error:', error);
+                showAlert('会員情報の取得に失敗しました', 'error');
+            }
+        }
+
+        const profileForm = document.getElementById('profile-form');
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = profileForm.querySelector('button[type="submit"]');
+            showLoading(submitBtn);
+
+            try {
+                const data = getFormData(profileForm);
+                delete data.email; // メールアドレスは更新しない
+
+                const result = await apiRequest('/api/profile', {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+
+                showAlert(result.message, 'success');
+                hideLoading(submitBtn);
+            } catch (error) {
+                showAlert(error.message, 'error');
+                hideLoading(submitBtn);
+            }
+        });
+
+        const passwordForm = document.getElementById('password-form');
+        passwordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = passwordForm.querySelector('button[type="submit"]');
+            const data = getFormData(passwordForm);
+
+            if (data.new_password !== data.new_password_confirm) {
+                showAlert('新しいパスワードが一致しません', 'error');
+                return;
+            }
+
+            if (data.new_password.length < 8) {
+                showAlert('新しいパスワードは8文字以上で入力してください', 'error');
+                return;
+            }
+
+            showLoading(submitBtn);
+
+            try {
+                const result = await apiRequest('/api/profile/password', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        currentPassword: data.current_password,
+                        newPassword: data.new_password
+                    })
+                });
+
+                showAlert(result.message, 'success');
+                passwordForm.reset();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            } finally {
+                hideLoading(submitBtn);
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+
+</html>

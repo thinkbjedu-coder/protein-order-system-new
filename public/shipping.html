@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配送先管理 - プロテイン注文システム</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/home.html" class="sidebar-logo">Think Body Japan</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/home.html" class="nav-item"><span class="nav-item-icon">🏠</span> ホーム</a>
+                <a href="/order.html" class="nav-item"><span class="nav-item-icon">🛒</span> 新規注文</a>
+                <a href="/history.html" class="nav-item"><span class="nav-item-icon">📋</span> 注文履歴</a>
+                <a href="/profile.html" class="nav-item"><span class="nav-item-icon">👤</span> 会員情報</a>
+                <a href="/shipping.html" class="nav-item active"><span class="nav-item-icon">📦</span> 配送先管理</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="logout()" class="btn btn-outline btn-block">ログアウト</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">配送先管理</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="openAddModal()">+ 新規追加</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="alert-container"></div>
+                <div id="addresses-container"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 追加/編集モーダル -->
+    <div id="address-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">配送先追加</h3>
+                <button class="modal-close" onclick="closeModal('address-modal')">×</button>
+            </div>
+            <form id="address-form">
+                <div class="modal-body">
+                    <input type="hidden" id="address-id">
+                    <div class="form-group">
+                        <label class="form-label required">ラベル</label>
+                        <input type="text" class="form-input" name="label" placeholder="本社" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">郵便番号</label>
+                        <input type="text" class="form-input" name="postal_code" placeholder="123-4567" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">住所</label>
+                        <input type="text" class="form-input" name="address" placeholder="東京都〇〇区〇〇" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">電話番号</label>
+                        <input type="tel" class="form-input" name="phone" placeholder="08012345678" required>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="is_default" style="margin-right: var(--spacing-sm);">
+                            デフォルトの配送先にする
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('address-modal')">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        async function loadAddresses() {
+            try {
+                const addresses = await apiRequest('/api/shipping-addresses');
+                const container = document.getElementById('addresses-container');
+
+                if (addresses.length === 0) {
+                    container.innerHTML = `
+            <div class="card">
+              <div class="card-body">
+                <div class="empty-state">
+                  <div class="empty-state-icon">📦</div>
+                  <h3 class="empty-state-title">配送先が登録されていません</h3>
+                  <p class="empty-state-description">配送先を追加してください。</p>
+                  <button class="btn btn-primary" onclick="openAddModal()">+ 新規追加</button>
+                </div>
+              </div>
+            </div>
+          `;
+                    return;
+                }
+
+                container.innerHTML = addresses.map(addr => `
+          <div class="card mb-md">
+            <div class="card-body">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);">
+                    <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">${addr.label}</h3>
+                    ${addr.is_default ? '<span class="badge badge-primary">デフォルト</span>' : ''}
+                  </div>
+                  <p style="margin-bottom: var(--spacing-xs);">〒${addr.postal_code}</p>
+                  <p style="margin-bottom: var(--spacing-xs);">${addr.address}</p>
+                  <p style="color: var(--color-text-secondary);">TEL: ${addr.phone}</p>
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                  <button class="btn btn-sm btn-outline" onclick="editAddress(${addr.id})">編集</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteAddress(${addr.id})">削除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+            } catch (error) {
+                console.error('Addresses error:', error);
+                showAlert('配送先の取得に失敗しました', 'error');
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').textContent = '配送先追加';
+            document.getElementById('address-form').reset();
+            document.getElementById('address-id').value = '';
+            openModal('address-modal');
+        }
+
+        async function editAddress(id) {
+            try {
+                const addresses = await apiRequest('/api/shipping-addresses');
+                const addr = addresses.find(a => a.id === id);
+
+                if (!addr) return;
+
+                document.getElementById('modal-title').textContent = '配送先編集';
+                document.getElementById('address-id').value = addr.id;
+
+                const form = document.getElementById('address-form');
+                form.elements.label.value = addr.label;
+                form.elements.postal_code.value = addr.postal_code;
+                form.elements.address.value = addr.address;
+                form.elements.phone.value = addr.phone;
+                form.elements.is_default.checked = addr.is_default === 1;
+
+                openModal('address-modal');
+            } catch (error) {
+                console.error('Edit error:', error);
+            }
+        }
+
+        async function deleteAddress(id) {
+            if (!confirm('この配送先を削除してもよろしいですか？')) return;
+
+            try {
+                const result = await apiRequest(`/api/shipping-addresses/${id}`, {
+                    method: 'DELETE'
+                });
+
+                showAlert(result.message, 'success');
+                loadAddresses();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        const addressForm = document.getElementById('address-form');
+        addressForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = addressForm.querySelector('button[type="submit"]');
+            showLoading(submitBtn);
+
+            try {
+                const data = getFormData(addressForm);
+                data.is_default = addressForm.elements.is_default.checked;
+
+                const addressId = document.getElementById('address-id').value;
+                const method = addressId ? 'PUT' : 'POST';
+                const url = addressId ? `/api/shipping-addresses/${addressId}` : '/api/shipping-addresses';
+
+                const result = await apiRequest(url, {
+                    method,
+                    body: JSON.stringify(data)
+                });
+
+                showAlert(result.message, 'success');
+                closeModal('address-modal');
+                loadAddresses();
+                hideLoading(submitBtn);
+            } catch (error) {
+                showAlert(error.message, 'error');
+                hideLoading(submitBtn);
+            }
+        });
+
+        loadAddresses();
+    </script>
+</body>
+
+</html>

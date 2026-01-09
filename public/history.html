@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注文履歴 - プロテイン注文システム</title>
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/common.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/home.html" class="sidebar-logo">Think Body Japan</a>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/home.html" class="nav-item"><span class="nav-item-icon">🏠</span> ホーム</a>
+        <a href="/order.html" class="nav-item"><span class="nav-item-icon">🛒</span> 新規注文</a>
+        <a href="/history.html" class="nav-item active"><span class="nav-item-icon">📋</span> 注文履歴</a>
+        <a href="/profile.html" class="nav-item"><span class="nav-item-icon">👤</span> 会員情報</a>
+        <a href="/shipping.html" class="nav-item"><span class="nav-item-icon">📦</span> 配送先管理</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button onclick="logout()" class="btn btn-outline btn-block">ログアウト</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <h1 class="header-title">注文履歴</h1>
+      </header>
+
+      <div class="content">
+        <div id="alert-container"></div>
+        <div class="card">
+          <div class="card-body">
+            <div id="orders-container"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 注文詳細モーダル -->
+  <div id="order-detail-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">注文詳細</h3>
+        <button class="modal-close" onclick="closeModal('order-detail-modal')">×</button>
+      </div>
+      <div class="modal-body" id="order-detail-content"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('order-detail-modal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    async function loadOrders() {
+      try {
+        const orders = await apiRequest('/api/orders');
+        const container = document.getElementById('orders-container');
+
+        if (orders.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📦</div>
+              <h3 class="empty-state-title">注文履歴がありません</h3>
+              <p class="empty-state-description">まだ注文がありません。</p>
+              <a href="/order.html" class="btn btn-primary">新規注文</a>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>注文ID</th>
+                  <th>商品</th>
+                  <th>数量</th>
+                  <th>単価</th>
+                  <th>合計金額</th>
+                  <th>ステータス</th>
+                  <th>注文日時</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${orders.map(order => `
+                  <tr>
+                    <td>#${order.id}</td>
+                    <td>BASE</td>
+                    <td>${order.quantity}袋</td>
+                    <td>${formatPrice(order.unit_price)}</td>
+                    <td>${formatPrice(order.total_price)}</td>
+                    <td>${getStatusBadge(order.status)}</td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>
+                      <div style="display: flex; gap: 4px;">
+                        <button class="btn btn-sm btn-outline" onclick="viewOrderDetail(${order.id})">詳細</button>
+                        <button class="btn btn-sm btn-outline" onclick="window.open('/api/orders/${order.id}/receipt', '_blank')" title="領収書発行">🧾</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Orders error:', error);
+        showAlert('注文履歴の取得に失敗しました', 'error');
+      }
+    }
+
+    async function viewOrderDetail(orderId) {
+      try {
+        const order = await apiRequest(`/api/orders/${orderId}`);
+        const content = document.getElementById('order-detail-content');
+
+        // トラッキング状況の計算
+        const statuses = ['受付', '準備中', '発送完了', '到着'];
+        // 旧ステータス「処理中」を「受付」として扱う
+        const currentStatus = order.status === '処理中' ? '受付' : order.status;
+        const statusIndex = statuses.indexOf(currentStatus);
+
+        // プログレスバーのHTML生成
+        let trackingHtml = '';
+        if (statusIndex !== -1) {
+          const progressPercent = statusIndex * 33.33;
+          trackingHtml = `
+            <div class="tracking-container">
+              <div class="tracking-steps">
+                <div class="tracking-progress-fill" style="width: ${progressPercent}%;"></div>
+                ${statuses.map((s, idx) => {
+            let className = 'tracking-step';
+            if (idx < statusIndex) className += ' completed';
+            if (idx === statusIndex) className += ' active';
+            return `
+                    <div class="${className}">
+                      <div class="tracking-dot"></div>
+                      <div class="tracking-label">${s}</div>
+                    </div>
+                  `;
+          }).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        content.innerHTML = `
+          ${trackingHtml}
+          
+          <div style="margin-bottom: var(--spacing-lg);">
+            <h4 style="margin-bottom: var(--spacing-md);">注文情報</h4>
+            <div style="display: grid; gap: var(--spacing-sm);">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">注文ID:</span>
+                <span>#${order.id}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">商品:</span>
+                <span>BASE(ココア味)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">数量:</span>
+                <span>${order.quantity}袋</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">単価:</span>
+                <span>${formatPrice(order.unit_price)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-weight: var(--font-weight-bold);">
+                <span>合計金額:</span>
+                <span style="color: var(--color-accent);">${formatPrice(order.total_price)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">ステータス:</span>
+                <span>${getStatusBadge(order.status)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--color-text-secondary);">注文日時:</span>
+                <span>${formatDate(order.created_at)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${order.shipping_address ? `
+            <div>
+              <h4 style="margin-bottom: var(--spacing-md);">配送先情報</h4>
+              <div style="background-color: var(--color-bg-secondary); padding: var(--spacing-md); border-radius: var(--border-radius-md);">
+                <p style="margin-bottom: var(--spacing-xs);"><strong>${order.shipping_address.label}</strong></p>
+                <p style="margin-bottom: var(--spacing-xs);">〒${order.shipping_address.postal_code}</p>
+                <p style="margin-bottom: var(--spacing-xs);">${order.shipping_address.address}</p>
+                <p>TEL: ${order.shipping_address.phone}</p>
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- 領収書発行ボタン -->
+          <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border); text-align: right;">
+            <button class="btn btn-primary" onclick="window.open('/api/orders/${order.id}/receipt', '_blank')">
+              🧾 領収書発行
+            </button>
+          </div>
+        `;
+
+        openModal('order-detail-modal');
+      } catch (error) {
+        console.error('Order detail error:', error);
+        showAlert('注文詳細の取得に失敗しました', 'error');
+      }
+    }
+
+    loadOrders();
+  </script>
+</body>
+
+</html>
