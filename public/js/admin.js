@@ -693,6 +693,7 @@ async function loadUsers() {
               <th>メールアドレス</th>
               <th>電話番号</th>
               <th>登録日</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -704,6 +705,11 @@ async function loadUsers() {
                 <td>${user.email}</td>
                 <td>${user.phone}</td>
                 <td>${formatDate(user.created_at)}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary" onclick="showUserDetail(${user.id})">
+                    詳細
+                  </button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -717,6 +723,82 @@ async function loadUsers() {
       alertContainer.innerHTML = `<div class="alert alert-error">ユーザー一覧の取得に失敗しました</div>`;
     }
   }
+}
+
+// ユーザー詳細表示
+function showUserDetail(userId) {
+  const user = usersData.find(u => u.id === userId);
+  if (!user) {
+    console.error('User not found:', userId);
+    return;
+  }
+
+  const detailContent = document.getElementById('user-detail-content');
+
+  detailContent.innerHTML = `
+    <div style="display: grid; gap: var(--spacing-lg);">
+      <!-- 基本情報 -->
+      <div>
+        <h4 style="font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 2px solid var(--color-border);">
+          🏢 事業者情報
+        </h4>
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-sm); font-size: var(--font-size-base);">
+          <div style="color: var(--color-text-secondary);">ユーザーID:</div>
+          <div><strong>#${user.id}</strong></div>
+          
+          <div style="color: var(--color-text-secondary);">事業者名:</div>
+          <div><strong>${user.company_name}</strong></div>
+          
+          <div style="color: var(--color-text-secondary);">登録日:</div>
+          <div>${formatDate(user.created_at)}</div>
+        </div>
+      </div>
+
+      <!-- 担当者情報 -->
+      <div>
+        <h4 style="font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 2px solid var(--color-border);">
+          👤 担当者情報
+        </h4>
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-sm); font-size: var(--font-size-base);">
+          <div style="color: var(--color-text-secondary);">氏名:</div>
+          <div><strong>${user.last_name} ${user.first_name}</strong></div>
+          
+          <div style="color: var(--color-text-secondary);">メールアドレス:</div>
+          <div>${user.email}</div>
+          
+          <div style="color: var(--color-text-secondary);">電話番号:</div>
+          <div>${user.phone}</div>
+        </div>
+      </div>
+
+      <!-- 住所情報 -->
+      <div>
+        <h4 style="font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 2px solid var(--color-border);">
+          📍 住所情報
+        </h4>
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-sm); font-size: var(--font-size-base);">
+          <div style="color: var(--color-text-secondary);">郵便番号:</div>
+          <div>${user.postal_code || '未登録'}</div>
+          
+          <div style="color: var(--color-text-secondary);">住所:</div>
+          <div>${user.address || '未登録'}</div>
+        </div>
+      </div>
+
+      <!-- セキュリティ情報 -->
+      <div>
+        <h4 style="font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 2px solid var(--color-border);">
+          🔒 セキュリティ情報
+        </h4>
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-sm); font-size: var(--font-size-base);">
+          <div style="color: var(--color-text-secondary);">パスワード:</div>
+          <div style="color: var(--color-text-secondary);">●●●●●●●● (セキュリティのため非表示)</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal('user-detail-modal');
 }
 
 // 商品管理ロジック

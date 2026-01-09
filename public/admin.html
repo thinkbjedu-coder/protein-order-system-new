@@ -433,6 +433,22 @@
         </div>
     </div>
 
+    <!-- ユーザー詳細モーダル -->
+    <div id="user-detail-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👤 ユーザー詳細情報</h3>
+                <button class="modal-close" onclick="closeModal('user-detail-modal')">×</button>
+            </div>
+            <div class="modal-body" id="user-detail-content">
+                <!-- 詳細内容がここに表示されます -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('user-detail-modal')">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/utils.js"></script>
     <script src="/js/admin.js"></script>
 </body>
