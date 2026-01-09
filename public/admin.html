@@ -80,6 +80,10 @@
                     <span class="nav-item-icon">👤</span>
                     ユーザー管理
                 </a>
+                <a href="#" class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+                    <span class="nav-item-icon">⚙️</span>
+                    設定
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <button onclick="adminLogout()" class="btn btn-outline btn-block">ログアウト</button>
@@ -242,6 +246,46 @@
                     <div class="card">
                         <div class="card-body">
                             <div id="products-table"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 設定コンテンツ -->
+                <div id="settings-content" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">⚙️ 管理者設定</h3>
+                        </div>
+                        <div class="card-body">
+                            <div style="max-width: 600px;">
+                                <h4 style="font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md);">
+                                    🔒 パスワード変更
+                                </h4>
+                                <form id="password-change-form">
+                                    <div class="form-group">
+                                        <label class="form-label required">現在のパスワード</label>
+                                        <input type="password" class="form-input" name="current_password" required
+                                            autocomplete="current-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label required">新しいパスワード</label>
+                                        <input type="password" class="form-input" name="new_password" required
+                                            minlength="6" autocomplete="new-password">
+                                        <p
+                                            style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 4px;">
+                                            ※6文字以上で入力してください
+                                        </p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label required">新しいパスワード(確認)</label>
+                                        <input type="password" class="form-input" name="new_password_confirm" required
+                                            minlength="6" autocomplete="new-password">
+                                    </div>
+                                    <div style="margin-top: var(--spacing-lg);">
+                                        <button type="submit" class="btn btn-primary">パスワードを変更</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>

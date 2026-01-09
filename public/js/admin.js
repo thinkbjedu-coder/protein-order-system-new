@@ -59,13 +59,15 @@ function switchTab(tab) {
   document.getElementById('orders-content').style.display = tab === 'orders' ? 'block' : 'none';
   document.getElementById('users-content').style.display = tab === 'users' ? 'block' : 'none';
   document.getElementById('products-content').style.display = tab === 'products' ? 'block' : 'none';
+  document.getElementById('settings-content').style.display = tab === 'settings' ? 'block' : 'none';
 
   // タイトルの変更
   const titles = {
     'dashboard': 'ダッシュボード',
     'orders': '注文管理',
     'users': 'ユーザー管理',
-    'products': '商品管理'
+    'products': '商品管理',
+    'settings': '設定'
   };
   document.getElementById('admin-title').textContent = titles[tab] || '管理画面';
 
@@ -1001,5 +1003,44 @@ if (dropZone && fileInput) {
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
   }
+}
+
+// パスワード変更フォーム
+const passwordChangeForm = document.getElementById('password-change-form');
+if (passwordChangeForm) {
+  passwordChangeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const submitBtn = passwordChangeForm.querySelector('button[type="submit"]');
+    const formData = new FormData(passwordChangeForm);
+    const currentPassword = formData.get('current_password');
+    const newPassword = formData.get('new_password');
+    const newPasswordConfirm = formData.get('new_password_confirm');
+
+    // パスワード確認
+    if (newPassword !== newPasswordConfirm) {
+      showAlert('新しいパスワードが一致しません', 'error');
+      return;
+    }
+
+    showLoading(submitBtn);
+
+    try {
+      const result = await apiRequest('/api/admin/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+
+      showAlert(result.message, 'success');
+      passwordChangeForm.reset();
+    } catch (error) {
+      showAlert(error.message, 'error');
+    } finally {
+      hideLoading(submitBtn);
+    }
+  });
 }
 

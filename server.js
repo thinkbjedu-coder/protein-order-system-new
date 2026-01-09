@@ -681,6 +681,44 @@ app.post('/api/admin/logout', (req, res) => {
     res.json({ success: true });
 });
 
+// 管理者パスワード変更
+app.post('/api/admin/change-password', requireAdmin, async (req, res) => {
+    try {
+        const { current_password, new_password } = req.body;
+
+        if (!current_password || !new_password) {
+            return res.status(400).json({ error: '必須項目を入力してください' });
+        }
+
+        if (new_password.length < 6) {
+            return res.status(400).json({ error: 'パスワードは6文字以上で設定してください' });
+        }
+
+        // 現在のパスワードを確認
+        const admin = await getOne('SELECT * FROM admin_users WHERE id = ?', [req.session.adminId]);
+        if (!admin) {
+            return res.status(404).json({ error: '管理者が見つかりません' });
+        }
+
+        const validPassword = await bcrypt.compare(current_password, admin.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: '現在のパスワードが正しくありません' });
+        }
+
+        // 新しいパスワードをハッシュ化
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+
+        // パスワードを更新
+        await runQuery('UPDATE admin_users SET password = ? WHERE id = ?', [hashedPassword, req.session.adminId]);
+
+        res.json({ success: true, message: 'パスワードを変更しました' });
+    } catch (error) {
+        console.error('パスワード変更エラー:', error);
+        res.status(500).json({ error: 'パスワードの変更に失敗しました' });
+    }
+});
+
+
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
         const orders = await getAll('SELECT * FROM orders ORDER BY created_at DESC');
