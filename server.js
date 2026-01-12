@@ -826,7 +826,9 @@ app.put('/api/admin/orders/:id', requireAdmin, async (req, res) => {
                 </div>
             `;
 
-            await sendEmail(user.email, `【Think Body Japan】商品を発送いたしました（注文番号: #${order.id}）`, emailHtml);
+            // 発送完了メール送信（非同期・待機しない）
+            sendEmail(user.email, `【Think Body Japan】商品を発送いたしました（注文番号: #${order.id}）`, emailHtml)
+                .catch(err => console.error('発送完了メール送信失敗:', err));
         } else if (status === 'キャンセル' && user) {
             const emailHtml = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -867,7 +869,9 @@ app.put('/api/admin/orders/:id', requireAdmin, async (req, res) => {
                 </div>
             `;
 
-            await sendEmail(user.email, `【Think Body Japan】ご注文がキャンセルされました（注文番号: #${order.id}）`, emailHtml);
+            // キャンセルメール送信（非同期・待機しない）
+            sendEmail(user.email, `【Think Body Japan】ご注文がキャンセルされました（注文番号: #${order.id}）`, emailHtml)
+                .catch(err => console.error('キャンセルメール送信失敗:', err));
         }
 
         res.json({ success: true, message: 'ステータスを更新しました' });
