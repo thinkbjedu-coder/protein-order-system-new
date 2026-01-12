@@ -58,8 +58,7 @@
 
                         <div class="form-group">
                             <label class="form-label">メールアドレス</label>
-                            <input type="email" class="form-input" name="email" disabled>
-                            <p class="form-help">メールアドレスは変更できません</p>
+                            <input type="email" class="form-input" name="email" required>
                         </div>
 
                         <div class="form-group">
@@ -137,7 +136,7 @@
 
             try {
                 const data = getFormData(profileForm);
-                delete data.email; // メールアドレスは更新しない
+                // delete data.email; // メールアドレスも更新対象
 
                 const result = await apiRequest('/api/profile', {
                     method: 'PUT',

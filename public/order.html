@@ -212,7 +212,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">注文内容の確認</h3>
-                <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeModal('confirm-modal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div
@@ -247,7 +247,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('confirm-modal')">キャンセル</button>
                 <button type="button" id="confirm-order-btn" class="btn btn-primary">注文を確定する</button>
             </div>
         </div>

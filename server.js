@@ -434,7 +434,9 @@ app.post('/api/orders', requireAuth, async (req, res) => {
             </div>
         `;
 
-        await sendEmail(user.email, `【Think Body Japan】ご注文ありがとうございます（注文番号: #${orderId}）`, customerEmailHtml);
+        // 顧客へのメール送信（非同期・待機しない）
+        sendEmail(user.email, `【Think Body Japan】ご注文ありがとうございます（注文番号: #${orderId}）`, customerEmailHtml)
+            .catch(err => console.error('顧客メール送信失敗:', err));
 
         // 管理者へのメール送信
         const adminEmailHtml = `
@@ -503,7 +505,9 @@ app.post('/api/orders', requireAuth, async (req, res) => {
             </div>
         `;
 
-        await sendEmail(adminEmail, `【Think Body Japan】新規注文 #${orderId} - ${user.company_name}`, adminEmailHtml);
+        // 管理者へのメール送信（非同期・待機しない）
+        sendEmail(adminEmail, `【Think Body Japan】新規注文 #${orderId} - ${user.company_name}`, adminEmailHtml)
+            .catch(err => console.error('管理者メール送信失敗:', err));
 
         res.json({ success: true, orderId, message: '注文を受け付けました' });
     } catch (error) {
@@ -542,11 +546,23 @@ app.get('/api/orders/:id', requireAuth, async (req, res) => {
 
 app.put('/api/profile', requireAuth, async (req, res) => {
     try {
-        const { company_name, last_name, first_name, phone, postal_code, address } = req.body;
+        const { company_name, last_name, first_name, phone, postal_code, address, email } = req.body;
+
+        // メールアドレス変更のチェック
+        if (email) {
+            const existingUser = await getOne('SELECT id FROM users WHERE email = ? AND id != ?', [email, req.session.userId]);
+            if (existingUser) {
+                return res.status(400).json({ error: 'このメールアドレスは既に使用されています' });
+            }
+        }
+
+        // 現在のメールアドレスを取得（指定がない場合は変更しないため）
+        const currentUser = await getOne('SELECT email FROM users WHERE id = ?', [req.session.userId]);
+        const newEmail = email || currentUser.email;
 
         await runQuery(
-            'UPDATE users SET company_name = ?, last_name = ?, first_name = ?, phone = ?, postal_code = ?, address = ? WHERE id = ?',
-            [company_name, last_name, first_name, phone, postal_code || '', address || '', req.session.userId]
+            'UPDATE users SET company_name = ?, last_name = ?, first_name = ?, phone = ?, postal_code = ?, address = ?, email = ? WHERE id = ?',
+            [company_name, last_name, first_name, phone, postal_code || '', address || '', newEmail, req.session.userId]
         );
 
         res.json({ success: true, message: '会員情報を更新しました' });
