@@ -98,12 +98,26 @@ function loadCurrentTab() {
 
 async function loadDashboard(month) {
   try {
+    // 月指定がない場合は今月をデフォルトにする
+    if (!month) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      month = `${y}-${m}`;
+
+      // 入力欄も更新
+      const monthInput = document.getElementById('dashboard-month');
+      if (monthInput && !monthInput.value) {
+        monthInput.value = month;
+      }
+    }
+
     let url = '/api/admin/dashboard';
     if (month) url += `?month=${month}`;
 
     const data = await apiRequest(url);
 
-    // inputの値を更新（初回ロード時など）
+    // inputの値を更新（サーバーからの返り値で上書き、あるいは初回ロード同期）
     if (data.targetMonth) {
       const monthInput = document.getElementById('dashboard-month');
       if (monthInput) monthInput.value = data.targetMonth;
