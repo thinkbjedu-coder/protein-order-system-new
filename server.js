@@ -1127,6 +1127,55 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     }
 });
 
+// デバッグ用: 本番DBの中身を覗くエンドポイント (後で削除する)
+app.get('/api/debug/dashboard', async (req, res) => {
+    try {
+        const { isProduction } = require('./database');
+
+        // 1. 環境情報
+        const envInfo = {
+            isProduction,
+            dbUrlExists: !!process.env.DATABASE_URL,
+            timestamp: new Date().toISOString()
+        };
+
+        // 2. ordersテーブルの全件数
+        const count = await getOne('SELECT COUNT(*) as total FROM orders');
+
+        // 3. 最初の5件の生データ (日付フォーマット確認用)
+        const sampleOrders = await getAll('SELECT id, created_at, total_price FROM orders ORDER BY id DESC LIMIT 5');
+
+        // 4. まさに今実行しようとしているクエリのテスト
+        // 今月 (2025-01 or 2026-01 etc.)
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const startStr = `${y}-${String(m).padStart(2, '0')}-01 00:00:00`;
+        const nextM = m === 12 ? 1 : m + 1;
+        const nextY = m === 12 ? y + 1 : y;
+        const endStr = `${nextY}-${String(nextM).padStart(2, '0')}-01 00:00:00`;
+
+        const queryTest = await getOne(`
+            SELECT count(*) as count 
+            FROM orders 
+            WHERE created_at >= ? AND created_at < ?
+        `, [startStr, endStr]);
+
+        res.json({
+            envInfo,
+            totalOrders: count,
+            sampleOrders,
+            queryTest: {
+                range: { start: startStr, end: endStr },
+                result: queryTest
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+
 // 請求書発行API
 app.get('/api/admin/orders/:id/invoice', requireAdmin, async (req, res) => {
     try {
