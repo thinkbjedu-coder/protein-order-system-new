@@ -45,14 +45,19 @@ const app = express();
 const PORT = 3000;
 
 // メール設定（環境変数から取得、なければダミー設定）
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
 const emailConfig = {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false,
+    port: smtpPort,
+    secure: smtpPort === 465, // ポート465の場合はtrue、それ以外はfalse
     auth: {
         user: process.env.SMTP_USER || 'your-email@gmail.com',
         pass: process.env.SMTP_PASS || 'your-app-password'
-    }
+    },
+    // タイムアウト設定を追加（Render対策）
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 };
 
 const adminEmail = process.env.ADMIN_EMAIL || 'admin@thinkbodyjapan.com';
@@ -62,6 +67,7 @@ let transporter;
 try {
     transporter = nodemailer.createTransport(emailConfig);
     console.log('メール設定を読み込みました');
+    console.log(`SMTP Config: ${emailConfig.host}:${emailConfig.port} (Secure: ${emailConfig.secure})`);
 } catch (error) {
     console.warn('メール設定の読み込みに失敗しました:', error.message);
 }
@@ -1223,12 +1229,27 @@ app.get('/api/debug/email', async (req, res) => {
     const smtpHost = process.env.SMTP_HOST;
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
-    const smtpPort = process.env.SMTP_PORT || 587;
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+
+    // 診断ロジックも本番と同じ設定を使用
+    const transportConfig = {
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465, // ポート465ならtrue
+        auth: {
+            user: smtpUser,
+            pass: smtpPass
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000
+    };
 
     const result = {
         config: {
             SMTP_HOST: smtpHost || '(未設定)',
             SMTP_PORT: smtpPort,
+            SMTP_SECURE: transportConfig.secure, // 自動判定結果を表示
             SMTP_USER: smtpUser || '(未設定)',
             SMTP_PASS: smtpPass ? '(設定あり)' : '(未設定)',
         },
@@ -1242,15 +1263,6 @@ app.get('/api/debug/email', async (req, res) => {
     }
 
     try {
-        const transportConfig = {
-            host: smtpHost,
-            port: parseInt(smtpPort),
-            secure: false,
-            auth: {
-                user: smtpUser,
-                pass: smtpPass
-            }
-        };
         const tempTransporter = nodemailer.createTransport(transportConfig);
         await tempTransporter.verify();
         result.connectionTest = '成功';
