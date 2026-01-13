@@ -117,6 +117,15 @@ async function loadDashboard(month) {
 
     const data = await apiRequest(url);
 
+    // デバッグ情報があれば表示（確認用）
+    if (data._debug) {
+      alert(`【デバッグ情報】\n` +
+        `Target: ${data._debug.currentStr}\n` +
+        `Count: ${data._debug.rawCurrentMonthData?.count}\n` +
+        `Sales: ${data._debug.rawCurrentMonthData?.sales}\n` +
+        `Range: ${data._debug.currentRange?.start} ~ ${data._debug.currentRange?.end}`);
+    }
+
     // inputの値を更新（サーバーからの返り値で上書き、あるいは初回ロード同期）
     if (data.targetMonth) {
       const monthInput = document.getElementById('dashboard-month');
