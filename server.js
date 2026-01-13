@@ -1105,21 +1105,36 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
             SELECT 
                 (SELECT COUNT(*) FROM orders) as totalOrders,
                 (SELECT COUNT(*) FROM products WHERE is_active = 1) as activeProducts
+                (SELECT COUNT(*) FROM products WHERE is_active = 1) as activeProducts
         `, []);
+
+        // 数値型への確実な変換（PostgreSQLはBigIntを文字列で返すため）
+        const safeInt = (val) => {
+            if (val === null || val === undefined) return 0;
+            const num = Number(val);
+            return isNaN(num) ? 0 : num;
+        };
+
+        const summary = {
+            currentMonthSales: safeInt(currentMonthData.sales),
+            lastMonthSales: safeInt(lastMonthData.sales),
+            growthRate: Math.round(growthRate * 10) / 10,
+            currentMonthOrders: safeInt(currentMonthData.count),
+            currentMonthQuantity: safeInt(currentMonthData.total_quantity),
+            totalOrders: safeInt(totalStats.totalOrders),
+            activeProducts: safeInt(totalStats.activeProducts)
+        };
 
         res.json({
             targetMonth: currentMonthStr,
-            summary: {
-                currentMonthSales: currentMonthData.sales,
-                lastMonthSales: lastMonthData.sales,
-                growthRate: Math.round(growthRate * 10) / 10,
-                currentMonthOrders: currentMonthData.count,
-                currentMonthQuantity: currentMonthData.total_quantity,
-                totalOrders: totalStats.totalOrders,
-                activeProducts: totalStats.activeProducts
-            },
+            summary,
             salesTrend,
-            productRanking
+            productRanking,
+            _debug: {
+                currentRange,
+                rawCurrentMonthData: currentMonthData,
+                currentStr: currentMonthStr
+            }
         });
     } catch (err) {
         console.error('Dashboard Error:', err);
