@@ -1105,7 +1105,6 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
             SELECT 
                 (SELECT COUNT(*) FROM orders) as totalOrders,
                 (SELECT COUNT(*) FROM products WHERE is_active = 1) as activeProducts
-                (SELECT COUNT(*) FROM products WHERE is_active = 1) as activeProducts
         `, []);
 
         // 数値型への確実な変換（PostgreSQLはBigIntを文字列で返すため）
