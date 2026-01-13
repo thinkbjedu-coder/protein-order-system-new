@@ -1013,49 +1013,73 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         const lastYear = lastMonthDate.getFullYear();
         const lastMonth = lastMonthDate.getMonth() + 1;
 
-        // 月のフォーマット (YYYY-MM)
-        const formatMonth = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
-        const currentMonthStr = formatMonth(currentYear, currentMonth);
-        const lastMonthStr = formatMonth(lastYear, lastMonth);
+        // 日付範囲計算用のヘルパー
+        // 指定した年月の初日と翌月の初日を取得（日本時間ベースで計算）
+        const getMonthRange = (year, month) => {
+            // month is 1-12
+            const startStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+
+            let nextYear = year;
+            let nextMonth = month + 1;
+            if (nextMonth > 12) {
+                nextMonth = 1;
+                nextYear++;
+            }
+            const endStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01 00:00:00`;
+
+            return {
+                start: startStr,
+                end: endStr
+            };
+        };
 
         // 1. 今月(指定月)の集計
+        // JSTでの「今月」の範囲を計算
+        // DBにはUTCまたはJSTで入っているが、文字列比較で範囲指定すればインデックスも効きやすく安全
+        // ※PostgreSQL(TIMESTAMP)もSQLite(TEXT)もYYYY-MM-DD HH:MM:SS形式での範囲比較は有効
+        const currentRange = getMonthRange(currentYear, currentMonth);
+
         let currentMonthData = await getOne(`
             SELECT 
                 COUNT(*) as count, 
                 COALESCE(SUM(total_price), 0) as sales,
                 COALESCE(SUM(quantity), 0) as total_quantity
             FROM orders 
-            WHERE strftime('%Y-%m', datetime(created_at, 'localtime')) = ?
-        `, [currentMonthStr]);
+            WHERE created_at >= ? AND created_at < ?
+        `, [currentRange.start, currentRange.end]);
 
         if (!currentMonthData) currentMonthData = { count: 0, sales: 0, total_quantity: 0 };
 
         // 2. 前月の売上
+        const lastMonthRange = getMonthRange(lastYear, lastMonth);
         const lastMonthData = await getOne(`
             SELECT COALESCE(SUM(total_price), 0) as sales 
             FROM orders 
-            WHERE strftime('%Y-%m', datetime(created_at, 'localtime')) = ?
-        `, [lastMonthStr]);
+            WHERE created_at >= ? AND created_at < ?
+        `, [lastMonthRange.start, lastMonthRange.end]);
 
         // 3. 前月比成長率
         let growthRate = 0;
         if (lastMonthData.sales > 0) {
             growthRate = ((currentMonthData.sales - lastMonthData.sales) / lastMonthData.sales) * 100;
         } else if (currentMonthData.sales > 0) {
-            growthRate = 100; // 前月0で今月売上ありなら100%扱い（あるいは適当な表示）
+            growthRate = 100; // 前月0で今月売上ありなら100%扱い
         }
 
         // 4. 過去6ヶ月の売上推移
         const salesTrend = [];
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const mStr = formatMonth(d.getFullYear(), d.getMonth() + 1);
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1;
+            const mStr = `${y}-${String(m).padStart(2, '0')}`;
+            const range = getMonthRange(y, m);
 
             const monthData = await getOne(`
                 SELECT COALESCE(SUM(total_price), 0) as sales 
                 FROM orders 
-                WHERE strftime('%Y-%m', datetime(created_at, 'localtime')) = ?
-            `, [mStr]);
+                WHERE created_at >= ? AND created_at < ?
+            `, [range.start, range.end]);
 
             salesTrend.push({
                 month: mStr,
