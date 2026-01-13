@@ -1,14 +1,51 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
-// フォントパス (Windows標準のMSゴシックを使用)
-const FONT_PATH = 'C:/Windows/Fonts/msgothic.ttc';
+// フォントパスの候補（優先順位順）
+const FONT_CANDIDATES = [
+    'C:/Windows/Fonts/msgothic.ttc',
+    'C:/Windows/Fonts/msmincho.ttc',
+    'C:/Windows/Fonts/YuGothM.ttc',
+    '/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf',
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'
+];
+
+// 利用可能なフォントを検索
+function findAvailableFont() {
+    for (const fontPath of FONT_CANDIDATES) {
+        if (fs.existsSync(fontPath)) {
+            console.log(`✓ 日本語フォントを検出: ${fontPath}`);
+            return fontPath;
+        }
+    }
+    console.warn('⚠️ 日本語フォントが見つかりません。デフォルトフォントを使用します。');
+    return null;
+}
+
+const FONT_PATH = findAvailableFont();
 const FONT_FAMILY = 'MS-Gothic';
 
 // 発行元情報（環境変数から取得）
 const COMPANY_NAME = process.env.COMPANY_NAME || '株式会社ThinkBodyJapan';
 const COMPANY_ADDRESS = process.env.COMPANY_ADDRESS || '東京都渋谷区...';
 const INVOICE_NUMBER = process.env.INVOICE_NUMBER || 'T1234567890123';
+
+/**
+ * PDFDocumentにフォントを設定する共通関数
+ */
+function setupFont(doc) {
+    if (FONT_PATH) {
+        try {
+            doc.font(FONT_PATH, FONT_FAMILY);
+            return true;
+        } catch (e) {
+            console.warn('⚠️ フォントの読み込みに失敗:', e.message);
+            return false;
+        }
+    }
+    return false;
+}
 
 /**
  * 請求書PDF生成
@@ -19,11 +56,10 @@ function generateInvoice(order, res) {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     doc.pipe(res);
 
-    try {
-        doc.font(FONT_PATH, FONT_FAMILY);
-    } catch (e) {
-        console.warn('指定フォントの読み込みに失敗しました。デフォルトフォントを使用します:', e.message);
-        // 日本語が出ない可能性が高いが、エラーで落ちるよりはマシ
+    // フォント設定
+    const fontLoaded = setupFont(doc);
+    if (!fontLoaded) {
+        console.warn('⚠️ 日本語フォントを使用できません。文字化けする可能性があります。');
     }
 
     // ヘッダー
@@ -133,10 +169,10 @@ function generateReceipt(order, res) {
 
     doc.pipe(res);
 
-    try {
-        doc.font(FONT_PATH, FONT_FAMILY);
-    } catch (e) {
-        console.warn('指定フォントエラー:', e.message);
+    // フォント設定
+    const fontLoaded = setupFont(doc);
+    if (!fontLoaded) {
+        console.warn('⚠️ 日本語フォントを使用できません。文字化けする可能性があります。');
     }
 
     // タイトル
@@ -150,7 +186,7 @@ function generateReceipt(order, res) {
     // 金額 (大きく目立たせる)
     doc.fontSize(20).text(`¥${order.total_price.toLocaleString()}-`, { align: 'center', underline: true });
     doc.moveDown(0.5);
-    
+
     // 但し書き
     doc.fontSize(11).text('但し プロテイン代として', { align: 'center' });
     doc.text('上記正に領収いたしました。', { align: 'center' });
@@ -159,7 +195,7 @@ function generateReceipt(order, res) {
     // 消費税内訳 (プロテインは軽減税率8%対象)
     const taxableAmount = Math.floor(order.total_price / 1.08);
     const taxAmount = order.total_price - taxableAmount;
-    
+
     doc.fontSize(10);
     doc.text(`(内消費税等 ¥${taxAmount.toLocaleString()})`, { align: 'center' });
     doc.text('※軽減税率(8%)対象商品', { align: 'center' });
@@ -176,7 +212,7 @@ function generateReceipt(order, res) {
     doc.fontSize(11).text(`発行者: ${COMPANY_NAME}`, { align: 'left' });
     doc.fontSize(10).text(`住所: ${COMPANY_ADDRESS}`, { align: 'left' });
     doc.text(`登録番号: ${INVOICE_NUMBER}`, { align: 'left' });
-    
+
     // 発行者情報の枠線
     doc.rect(40, issuerY - 10, 520, 60).stroke();
 

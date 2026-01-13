@@ -68,21 +68,41 @@ try {
 
 // メール送信関数
 async function sendEmail(to, subject, html) {
+    // 環境変数チェック
+    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+
+    if (!hasSmtpConfig) {
+        console.warn('⚠️ メール設定の環境変数が不足しています:');
+        console.warn('  SMTP_HOST:', process.env.SMTP_HOST ? '✓' : '✗');
+        console.warn('  SMTP_USER:', process.env.SMTP_USER ? '✓' : '✗');
+        console.warn('  SMTP_PASS:', process.env.SMTP_PASS ? '✗ (セキュリティのため非表示)' : '✗');
+        console.warn('  メール送信をスキップします');
+        return;
+    }
+
     if (!transporter) {
-        console.warn('メール送信がスキップされました（トランスポーター未設定）');
+        console.warn('⚠️ メール送信がスキップされました（トランスポーター未設定）');
         return;
     }
 
     try {
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: `"Think Body Japan" <${emailConfig.auth.user}>`,
             to,
             subject,
             html
         });
-        console.log(`メール送信成功: ${to}`);
+        console.log(`✓ メール送信成功: ${to}`);
+        console.log(`  件名: ${subject}`);
+        console.log(`  Message ID: ${info.messageId}`);
     } catch (error) {
-        console.error('メール送信エラー:', error.message);
+        console.error('✗ メール送信エラー:', error.message);
+        console.error('  宛先:', to);
+        console.error('  件名:', subject);
+        if (error.code) {
+            console.error('  エラーコード:', error.code);
+        }
+        // エラーを再スローせず、処理を継続
     }
 }
 
@@ -1197,6 +1217,51 @@ app.get('/api/orders/:id/receipt', requireAuth, async (req, res) => {
 });
 
 
+
+// === DEBUG: メール設定診断用エンドポイント ===
+app.get('/api/debug/email', async (req, res) => {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const smtpPort = process.env.SMTP_PORT || 587;
+
+    const result = {
+        config: {
+            SMTP_HOST: smtpHost || '(未設定)',
+            SMTP_PORT: smtpPort,
+            SMTP_USER: smtpUser || '(未設定)',
+            SMTP_PASS: smtpPass ? '(設定あり)' : '(未設定)',
+        },
+        connectionTest: '未実行',
+        error: null
+    };
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+        result.connectionTest = 'スキップ（設定不足）';
+        return res.json(result);
+    }
+
+    try {
+        const transportConfig = {
+            host: smtpHost,
+            port: parseInt(smtpPort),
+            secure: false,
+            auth: {
+                user: smtpUser,
+                pass: smtpPass
+            }
+        };
+        const tempTransporter = nodemailer.createTransport(transportConfig);
+        await tempTransporter.verify();
+        result.connectionTest = '成功';
+    } catch (error) {
+        result.connectionTest = '失敗';
+        result.error = error.message;
+        result.errorCode = error.code;
+    }
+
+    res.json(result);
+});
 
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました: http://localhost:${PORT}`);
