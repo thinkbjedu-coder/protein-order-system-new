@@ -1,13 +1,19 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const path = require('path');
 
 // フォントパスの候補（優先順位順）
 const FONT_CANDIDATES = [
+    // プロジェクト内のフォント（最優先）
+    path.join(__dirname, '../fonts/NotoSansJP-Regular.ttf'),
+    // Windowsフォント
     'C:/Windows/Fonts/msgothic.ttc',
     'C:/Windows/Fonts/msmincho.ttc',
     'C:/Windows/Fonts/YuGothM.ttc',
+    // Linuxフォント
     '/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf',
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    // macOSフォント
     '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'
 ];
 
@@ -19,12 +25,11 @@ function findAvailableFont() {
             return fontPath;
         }
     }
-    console.warn('⚠️ 日本語フォントが見つかりません。デフォルトフォントを使用します。');
+    console.error('❌ 利用可能な日本語フォントがありません');
     return null;
 }
 
 const FONT_PATH = findAvailableFont();
-const FONT_FAMILY = 'MS-Gothic';
 
 // 発行元情報（環境変数から取得）
 const COMPANY_NAME = process.env.COMPANY_NAME || '株式会社ThinkBodyJapan';
@@ -37,13 +42,16 @@ const INVOICE_NUMBER = process.env.INVOICE_NUMBER || 'T1234567890123';
 function setupFont(doc) {
     if (FONT_PATH) {
         try {
-            doc.font(FONT_PATH, FONT_FAMILY);
+            // PDFKitは自動でフォントファミリーを処理するため、パスのみ指定
+            doc.font(FONT_PATH);
+            console.log(`✓ フォントを適用: ${FONT_PATH}`);
             return true;
         } catch (e) {
             console.warn('⚠️ フォントの読み込みに失敗:', e.message);
             return false;
         }
     }
+    console.error('❌ 利用可能な日本語フォントがありません');
     return false;
 }
 
