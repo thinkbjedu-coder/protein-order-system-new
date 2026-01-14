@@ -334,18 +334,22 @@ async function getOne(sql, params = []) {
     const result = await pgPool.query(pgSql, pgParams);
     return result.rows.length > 0 ? result.rows[0] : null;
   } else {
-    const result = db.exec(sql, params);
-    if (result.length === 0 || result[0].values.length === 0) {
-      return null;
-    }
+    try {
+      const stmt = db.prepare(sql);
+      stmt.bind(params);
 
-    const columns = result[0].columns;
-    const values = result[0].values[0];
-    const row = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    return row;
+      let row = null;
+      if (stmt.step()) {
+        row = stmt.getAsObject();
+      }
+      stmt.free();
+      return row;
+    } catch (error) {
+      console.error('SQLite getOne error:', error);
+      console.error('SQL:', sql);
+      console.error('Params:', params);
+      throw error;
+    }
   }
 }
 
@@ -365,19 +369,22 @@ async function getAll(sql, params = []) {
     const result = await pgPool.query(pgSql, pgParams);
     return result.rows;
   } else {
-    const result = db.exec(sql, params);
-    if (result.length === 0) {
-      return [];
-    }
+    try {
+      const stmt = db.prepare(sql);
+      stmt.bind(params);
 
-    const columns = result[0].columns;
-    return result[0].values.map(values => {
-      const row = {};
-      columns.forEach((col, i) => {
-        row[col] = values[i];
-      });
-      return row;
-    });
+      const rows = [];
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+      }
+      stmt.free();
+      return rows;
+    } catch (error) {
+      console.error('SQLite getAll error:', error);
+      console.error('SQL:', sql);
+      console.error('Params:', params);
+      throw error;
+    }
   }
 }
 
