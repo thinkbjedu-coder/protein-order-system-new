@@ -1066,7 +1066,7 @@ if (passwordChangeForm) {
     if (admin) {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'flex';
-      loadDashboard();
+      // 現在のタブを維持するため、loadDashboard()は呼び出さない
     }
   } catch (error) {
     // セッションが無効な場合、ログイン画面を表示
