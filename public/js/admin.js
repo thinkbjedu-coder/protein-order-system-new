@@ -1069,8 +1069,9 @@ if (passwordChangeForm) {
       loadDashboard();
     }
   } catch (error) {
-    // セッションが無効な場合、ログイン画面を表示（デフォルト）
-    console.log('管理者セッションなし、ログイン画面を表示');
+    // セッションが無効な場合、ログイン画面を表示
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('admin-screen').style.display = 'none';
   }
 })();
 
