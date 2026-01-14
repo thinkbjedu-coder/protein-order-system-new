@@ -1114,6 +1114,9 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
             return isNaN(num) ? 0 : num;
         };
 
+        // 対象月の文字列を生成（YYYY-MM形式）
+        const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
         const summary = {
             currentMonthSales: safeInt(currentMonthData.sales),
             lastMonthSales: safeInt(lastMonthData.sales),
