@@ -50,6 +50,9 @@ let productChart = null;
 function switchTab(tab) {
   currentTab = tab;
 
+  // タブをlocalStorageに保存
+  localStorage.setItem('adminCurrentTab', tab);
+
   // メニューの活性化
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.getElementById(`nav-${tab}`).classList.add('active');
@@ -1066,7 +1069,10 @@ if (passwordChangeForm) {
     if (admin) {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-screen').style.display = 'flex';
-      // 現在のタブを維持するため、loadDashboard()は呼び出さない
+
+      // 最後に選択されていたタブを復元（デフォルトはダッシュボード）
+      const savedTab = localStorage.getItem('adminCurrentTab') || 'dashboard';
+      switchTab(savedTab);
     }
   } catch (error) {
     // セッションが無効な場合、ログイン画面を表示
