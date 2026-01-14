@@ -34,7 +34,7 @@ const FONT_PATH = findAvailableFont();
 // 発行元情報（環境変数から取得）
 const COMPANY_NAME = process.env.COMPANY_NAME || '株式会社ThinkBodyJapan';
 const COMPANY_ADDRESS = process.env.COMPANY_ADDRESS || '東京都渋谷区...';
-const INVOICE_NUMBER = process.env.INVOICE_NUMBER || 'T1234567890123';
+const INVOICE_NUMBER = process.env.INVOICE_NUMBER || 'T1180001124300';
 
 /**
  * PDFDocumentにフォントを設定する共通関数
