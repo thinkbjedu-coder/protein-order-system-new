@@ -760,6 +760,20 @@ app.post('/api/admin/change-password', requireAdmin, async (req, res) => {
     }
 });
 
+// 管理者セッションチェック
+app.get('/api/admin/me', requireAdmin, async (req, res) => {
+    try {
+        const admin = await getOne('SELECT id, username FROM admin_users WHERE id = ?', [req.session.adminId]);
+        if (!admin) {
+            return res.status(404).json({ error: '管理者が見つかりません' });
+        }
+        res.json(admin);
+    } catch (error) {
+        console.error('管理者情報取得エラー:', error);
+        res.status(500).json({ error: '管理者情報の取得に失敗しました' });
+    }
+});
+
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
