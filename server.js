@@ -66,8 +66,16 @@ const adminEmail = process.env.ADMIN_EMAIL || 'admin@thinkbodyjapan.com';
 let transporter;
 try {
     transporter = nodemailer.createTransport(emailConfig);
+    console.log('========================================');
     console.log('メール設定を読み込みました');
     console.log(`SMTP Config: ${emailConfig.host}:${emailConfig.port} (Secure: ${emailConfig.secure})`);
+    console.log('環境変数の読み込み状況:');
+    console.log('  SMTP_HOST:', process.env.SMTP_HOST ? '✓' : '✗');
+    console.log('  SMTP_PORT:', process.env.SMTP_PORT ? '✓' : '✗ (デフォルト: 587)');
+    console.log('  SMTP_USER:', process.env.SMTP_USER ? '✓' : '✗');
+    console.log('  SMTP_PASS:', process.env.SMTP_PASS ? '✓' : '✗');
+    console.log('  ADMIN_EMAIL:', process.env.ADMIN_EMAIL ? '✓' : '✗');
+    console.log('========================================');
 } catch (error) {
     console.warn('メール設定の読み込みに失敗しました:', error.message);
 }
