@@ -3,7 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
 const { initDatabase, runQuery, getOne, getAll, getLastInsertId, saveDatabase } = require('./database');
 const multer = require('multer');
@@ -44,77 +44,61 @@ const upload = multer({
 const app = express();
 const PORT = 3000;
 
-// メール設定（環境変数から取得、なければダミー設定）
-const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-const emailConfig = {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: smtpPort,
-    secure: smtpPort === 465, // ポート465の場合はtrue、それ以外はfalse
-    auth: {
-        user: process.env.SMTP_USER || 'your-email@gmail.com',
-        pass: process.env.SMTP_PASS || 'your-app-password'
-    },
-    // タイムアウト設定を追加（Render対策）
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-};
-
+// SendGrid設定（環境変数から取得）
+const sendgridApiKey = process.env.SENDGRID_API_KEY;
+const fromEmail = process.env.FROM_EMAIL || 'life-admin@thinkbody.co.jp';
+const fromName = process.env.FROM_NAME || '株式会社Think Life';
 const adminEmail = process.env.ADMIN_EMAIL || 'admin@thinkbodyjapan.com';
 
-// メール送信用のトランスポーター作成
-let transporter;
-try {
-    transporter = nodemailer.createTransport(emailConfig);
+// SendGrid APIキーを設定
+if (sendgridApiKey) {
+    sgMail.setApiKey(sendgridApiKey);
     console.log('========================================');
-    console.log('メール設定を読み込みました');
-    console.log(`SMTP Config: ${emailConfig.host}:${emailConfig.port} (Secure: ${emailConfig.secure})`);
+    console.log('✓ SendGrid設定を読み込みました');
     console.log('環境変数の読み込み状況:');
-    console.log('  SMTP_HOST:', process.env.SMTP_HOST ? '✓' : '✗');
-    console.log('  SMTP_PORT:', process.env.SMTP_PORT ? '✓' : '✗ (デフォルト: 587)');
-    console.log('  SMTP_USER:', process.env.SMTP_USER ? '✓' : '✗');
-    console.log('  SMTP_PASS:', process.env.SMTP_PASS ? '✓' : '✗');
-    console.log('  ADMIN_EMAIL:', process.env.ADMIN_EMAIL ? '✓' : '✗');
+    console.log('  SENDGRID_API_KEY:', sendgridApiKey ? '✓' : '✗');
+    console.log('  FROM_EMAIL:', fromEmail);
+    console.log('  FROM_NAME:', fromName);
+    console.log('  ADMIN_EMAIL:', adminEmail);
     console.log('========================================');
-} catch (error) {
-    console.warn('メール設定の読み込みに失敗しました:', error.message);
+} else {
+    console.warn('========================================');
+    console.warn('⚠️ SENDGRID_API_KEY が設定されていません');
+    console.warn('  メール送信機能は無効化されます');
+    console.warn('========================================');
 }
 
-// メール送信関数
+// メール送信関数（SendGrid使用）
 async function sendEmail(to, subject, html) {
-    // 環境変数チェック
-    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-
-    if (!hasSmtpConfig) {
-        console.warn('⚠️ メール設定の環境変数が不足しています:');
-        console.warn('  SMTP_HOST:', process.env.SMTP_HOST ? '✓' : '✗');
-        console.warn('  SMTP_USER:', process.env.SMTP_USER ? '✓' : '✗');
-        console.warn('  SMTP_PASS:', process.env.SMTP_PASS ? '✗ (セキュリティのため非表示)' : '✗');
+    // SendGrid APIキーチェック
+    if (!sendgridApiKey) {
+        console.warn('⚠️ SENDGRID_API_KEY が設定されていません');
         console.warn('  メール送信をスキップします');
-        return;
-    }
-
-    if (!transporter) {
-        console.warn('⚠️ メール送信がスキップされました（トランスポーター未設定）');
+        console.warn('  宛先:', to);
+        console.warn('  件名:', subject);
         return;
     }
 
     try {
-        const info = await transporter.sendMail({
-            from: `"Think Body Japan" <${emailConfig.auth.user}>`,
-            to,
-            subject,
-            html
-        });
-        console.log(`✓ メール送信成功: ${to}`);
+        const msg = {
+            to: to,
+            from: {
+                email: fromEmail,
+                name: fromName
+            },
+            subject: subject,
+            html: html
+        };
+
+        await sgMail.send(msg);
+        console.log(`✓ メール送信成功 (SendGrid): ${to}`);
         console.log(`  件名: ${subject}`);
-        console.log(`  Message ID: ${info.messageId}`);
     } catch (error) {
-        console.error('✗ メール送信エラー:', error.message);
+        console.error('✗ メール送信エラー (SendGrid):', error.message);
         console.error('  宛先:', to);
         console.error('  件名:', subject);
-        if (error.code) {
-            console.error('  エラーコード:', error.code);
+        if (error.response) {
+            console.error('  SendGrid Response:', error.response.body);
         }
         // エラーを再スローせず、処理を継続
     }
