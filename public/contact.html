@@ -168,6 +168,11 @@
                     order_id: document.getElementById('order_id').value.trim() || null
                 };
 
+                // 注文番号のバリデーション（数値のみ許可）
+                if (formData.order_id && !/^\d+$/.test(formData.order_id)) {
+                    throw new Error('注文番号は数値のみ入力してください');
+                }
+
                 // バリデーション
                 if (!formData.subject) {
                     throw new Error('件名を入力してください');
