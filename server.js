@@ -686,6 +686,97 @@ app.delete('/api/shipping-addresses/:id', requireAuth, async (req, res) => {
     }
 });
 
+// ============ 問い合わせAPI ============
+
+app.post('/api/contact', requireAuth, async (req, res) => {
+    try {
+        const { subject, message, order_id } = req.body;
+
+        if (!subject || !message) {
+            return res.status(400).json({ error: '件名とお問い合わせ内容を入力してください' });
+        }
+
+        // ユーザー情報を取得
+        const user = await getOne('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+        if (!user) {
+            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+        }
+
+        // 注文情報を取得（注文番号が指定されている場合）
+        let orderInfo = '';
+        if (order_id) {
+            const order = await getOne('SELECT * FROM orders WHERE id = ? AND user_id = ?', [order_id, req.session.userId]);
+            if (order) {
+                orderInfo = `
+                    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h4 style="margin-top: 0;">関連注文情報</h4>
+                        <p style="margin: 5px 0;"><strong>注文番号:</strong> #${order.id}</p>
+                        <p style="margin: 5px 0;"><strong>数量:</strong> ${order.quantity}袋</p>
+                        <p style="margin: 5px 0;"><strong>合計金額:</strong> ¥${order.total_price.toLocaleString()}</p>
+                        <p style="margin: 5px 0;"><strong>ステータス:</strong> ${order.status}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 管理者へのメール送信
+        const adminEmailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2563eb;">お問い合わせが届きました</h2>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0;">送信者情報</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; color: #6b7280;">会社名:</td>
+                            <td style="padding: 8px 0; font-weight: bold;">${user.company_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #6b7280;">お名前:</td>
+                            <td style="padding: 8px 0;">${user.last_name} ${user.first_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #6b7280;">メールアドレス:</td>
+                            <td style="padding: 8px 0;">${user.email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #6b7280;">電話番号:</td>
+                            <td style="padding: 8px 0;">${user.phone}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                ${orderInfo}
+
+                <div style="margin: 20px 0;">
+                    <h3>件名</h3>
+                    <p style="font-weight: bold; font-size: 18px;">${subject}</p>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <h3>お問い合わせ内容</h3>
+                    <div style="background-color: #ffffff; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; white-space: pre-wrap;">
+${message}
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+                    <p>このメールに返信することで、お客様に直接返信できます。</p>
+                </div>
+            </div>
+        `;
+
+        // メール送信（非同期・待機しない）
+        sendEmail(adminEmail, `【お問い合わせ】${subject} - ${user.company_name}`, adminEmailHtml)
+            .catch(err => console.error('問い合わせメール送信失敗:', err));
+
+        res.json({ success: true, message: 'お問い合わせを送信しました' });
+    } catch (error) {
+        console.error('問い合わせ送信エラー:', error);
+        res.status(500).json({ error: 'お問い合わせの送信に失敗しました' });
+    }
+});
+
 // ============ 管理者API ============
 
 app.post('/api/admin/login', async (req, res) => {
@@ -913,6 +1004,25 @@ app.put('/api/admin/orders/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// 注文削除API（テスト注文用）
+app.delete('/api/admin/orders/:id', requireAdmin, async (req, res) => {
+    try {
+        // 注文が存在するか確認
+        const order = await getOne('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+        if (!order) {
+            return res.status(404).json({ error: '注文が見つかりません' });
+        }
+
+        // 注文を削除
+        await runQuery('DELETE FROM orders WHERE id = ?', [req.params.id]);
+
+        res.json({ success: true, message: '注文を削除しました' });
+    } catch (error) {
+        console.error('注文削除エラー:', error);
+        res.status(500).json({ error: '注文の削除に失敗しました' });
+    }
+});
+
 app.put('/api/admin/orders/:id/payment', requireAdmin, async (req, res) => {
     try {
         const { payment_confirmed, payment_date } = req.body;
@@ -1051,7 +1161,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
                 COALESCE(SUM(total_price), 0) as sales,
                 COALESCE(SUM(quantity), 0) as total_quantity
             FROM orders 
-            WHERE created_at >= ? AND created_at < ?
+            WHERE created_at >= ? AND created_at < ? AND status != 'キャンセル'
         `, [currentRange.start, currentRange.end]);
 
         if (!currentMonthData) currentMonthData = { count: 0, sales: 0, total_quantity: 0 };
@@ -1061,7 +1171,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         const lastMonthData = await getOne(`
             SELECT COALESCE(SUM(total_price), 0) as sales 
             FROM orders 
-            WHERE created_at >= ? AND created_at < ?
+            WHERE created_at >= ? AND created_at < ? AND status != 'キャンセル'
         `, [lastMonthRange.start, lastMonthRange.end]);
 
         // 3. 前月比成長率
@@ -1084,7 +1194,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
             const monthData = await getOne(`
                 SELECT COALESCE(SUM(total_price), 0) as sales 
                 FROM orders 
-                WHERE created_at >= ? AND created_at < ?
+                WHERE created_at >= ? AND created_at < ? AND status != 'キャンセル'
             `, [range.start, range.end]);
 
             salesTrend.push({
@@ -1101,6 +1211,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
                 SUM(o.total_price) as total_sales 
             FROM orders o
             JOIN products p ON o.product_id = p.id
+            WHERE o.status != 'キャンセル'
             GROUP BY p.id
             ORDER BY total_sales DESC
             LIMIT 5
@@ -1109,7 +1220,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         // 6. 総注文数、稼働商品数
         const totalStats = await getOne(`
             SELECT 
-                (SELECT COUNT(*) FROM orders) as totalOrders,
+                (SELECT COUNT(*) FROM orders WHERE status != 'キャンセル') as totalOrders,
                 (SELECT COUNT(*) FROM products WHERE is_active = 1) as activeProducts
         `, []);
 

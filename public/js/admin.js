@@ -273,6 +273,9 @@ async function loadOrders() {
                         💰 入金確認
                       </button>
                     ` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="deleteOrder(${order.id})" title="注文を削除">
+                      🗑️
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -537,6 +540,34 @@ if (statusForm) {
       hideLoading(submitBtn);
     }
   });
+}
+
+// 注文削除
+async function deleteOrder(orderId) {
+  if (!confirm('この注文を削除してもよろしいですか?\n\n※この操作は取り消せません。テスト注文の削除にのみ使用してください。')) {
+    return;
+  }
+
+  try {
+    const result = await apiRequest(`/api/admin/orders/${orderId}`, {
+      method: 'DELETE'
+    });
+
+    const alertContainer = document.getElementById('admin-alert');
+    if (alertContainer) {
+      alertContainer.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 3000);
+    }
+
+    loadOrders();
+  } catch (error) {
+    const alertContainer = document.getElementById('admin-alert');
+    if (alertContainer) {
+      alertContainer.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+    }
+  }
 }
 
 // 注文詳細表示

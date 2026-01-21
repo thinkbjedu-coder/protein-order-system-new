@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お問い合わせ - プロテイン注文システム</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- サイドバー -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/home.html" class="sidebar-logo">Think Body Japan</a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/home.html" class="nav-item">
+                    <span class="nav-item-icon">🏠</span>
+                    ホーム
+                </a>
+                <a href="/order.html" class="nav-item">
+                    <span class="nav-item-icon">🛒</span>
+                    新規注文
+                </a>
+                <a href="/history.html" class="nav-item">
+                    <span class="nav-item-icon">📋</span>
+                    注文履歴
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="nav-item-icon">👤</span>
+                    会員情報
+                </a>
+                <a href="/shipping.html" class="nav-item">
+                    <span class="nav-item-icon">📦</span>
+                    配送先管理
+                </a>
+                <a href="/contact.html" class="nav-item active">
+                    <span class="nav-item-icon">💬</span>
+                    お問い合わせ
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button onclick="logout()" class="btn btn-outline btn-block">ログアウト</button>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">お問い合わせ</h1>
+                <div class="header-actions">
+                    <span id="user-name"></span>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="alert-container"></div>
+
+                <!-- 説明カード -->
+                <div class="card mb-lg">
+                    <div class="card-body">
+                        <p style="color: var(--color-text-secondary); margin: 0;">
+                            ご不明な点やご質問がございましたら、以下のフォームからお気軽にお問い合わせください。<br>
+                            担当者が確認次第、ご登録のメールアドレス宛にご返信いたします。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 問い合わせフォーム -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">お問い合わせフォーム</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="contact-form">
+                            <div class="form-group">
+                                <label for="subject" class="form-label">件名 <span
+                                        style="color: var(--color-danger);">*</span></label>
+                                <input type="text" id="subject" name="subject" class="form-input" required
+                                    placeholder="例: 配送について">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="order_id" class="form-label">注文番号（任意）</label>
+                                <input type="text" id="order_id" name="order_id" class="form-input"
+                                    placeholder="例: 123">
+                                <small style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                    特定の注文に関するお問い合わせの場合は、注文番号をご入力ください。
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="message" class="form-label">お問い合わせ内容 <span
+                                        style="color: var(--color-danger);">*</span></label>
+                                <textarea id="message" name="message" class="form-input" rows="8" required
+                                    placeholder="お問い合わせ内容をご記入ください"></textarea>
+                            </div>
+
+                            <div
+                                style="background-color: var(--color-bg-secondary); padding: var(--spacing-md); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-lg);">
+                                <p style="margin: 0 0 var(--spacing-sm) 0; font-weight: 600;">送信者情報</p>
+                                <p
+                                    style="margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                    会社名: <span id="display-company"></span><br>
+                                    お名前: <span id="display-name"></span><br>
+                                    メールアドレス: <span id="display-email"></span>
+                                </p>
+                                <small
+                                    style="color: var(--color-text-secondary); font-size: var(--font-size-xs); display: block; margin-top: var(--spacing-sm);">
+                                    ※ 上記の情報が問い合わせ内容と共に送信されます
+                                </small>
+                            </div>
+
+                            <div style="display: flex; gap: var(--spacing-md);">
+                                <button type="submit" class="btn btn-primary" id="submit-btn">
+                                    送信する
+                                </button>
+                                <button type="button" class="btn btn-outline"
+                                    onclick="window.location.href='/home.html'">
+                                    キャンセル
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        let userInfo = null;
+
+        // ユーザー情報取得
+        async function loadUserInfo() {
+            try {
+                userInfo = await apiRequest('/api/me');
+                document.getElementById('user-name').textContent = `${userInfo.last_name} ${userInfo.first_name}`;
+                document.getElementById('display-company').textContent = userInfo.company_name;
+                document.getElementById('display-name').textContent = `${userInfo.last_name} ${userInfo.first_name}`;
+                document.getElementById('display-email').textContent = userInfo.email;
+            } catch (error) {
+                console.error('User info error:', error);
+                showAlert('ユーザー情報の取得に失敗しました', 'error');
+            }
+        }
+
+        // フォーム送信
+        document.getElementById('contact-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submit-btn');
+            const originalText = submitBtn.textContent;
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '送信中...';
+
+                const formData = {
+                    subject: document.getElementById('subject').value.trim(),
+                    message: document.getElementById('message').value.trim(),
+                    order_id: document.getElementById('order_id').value.trim() || null
+                };
+
+                // バリデーション
+                if (!formData.subject) {
+                    throw new Error('件名を入力してください');
+                }
+                if (!formData.message) {
+                    throw new Error('お問い合わせ内容を入力してください');
+                }
+
+                await apiRequest('/api/contact', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                showAlert('お問い合わせを送信しました。担当者からの返信をお待ちください。', 'success');
+
+                // フォームをリセット
+                document.getElementById('contact-form').reset();
+
+                // 3秒後にホームに戻る
+                setTimeout(() => {
+                    window.location.href = '/home.html';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Contact form error:', error);
+                showAlert(error.message || 'お問い合わせの送信に失敗しました', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        // ページ読み込み時
+        loadUserInfo();
+    </script>
+</body>
+
+</html>
