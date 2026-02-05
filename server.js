@@ -387,6 +387,18 @@ app.post('/api/orders', requireAuth, async (req, res) => {
         const unit_price = product.price;
         const total_price = quantity * unit_price;
 
+        // 【追加】Google Sheets在庫チェック
+        const googleSheetsService = require('./services/googleSheetsService');
+        const stockCheck = await googleSheetsService.checkStock(product, quantity);
+
+        if (!stockCheck.valid) {
+            // 在庫不足エラー
+            // ログはservice側ですでに出力済み
+            return res.status(400).json({
+                error: stockCheck.message || '在庫を確認できませんでした'
+            });
+        }
+
         await runQuery(
             'INSERT INTO orders (user_id, product_id, shipping_address_id, quantity, unit_price, total_price, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [req.session.userId, product.id, shipping_address_id, quantity, unit_price, total_price, '処理中']
