@@ -144,7 +144,7 @@ async function initPostgreSQL() {
     if (productExists.rows.length === 0) {
       await client.query(
         'INSERT INTO products (name, flavor, price, image_url, description, min_quantity, quantity_step) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        ['BASE', 'ココア味', 1500, '/product.png', '無駄な添加物を徹底的に省いた高品質設計。腸内環境にも安心できるやさしい内容。プロテイン習慣を始めるのに最適なバランス。', 10, 10]
+        ['BASE', 'ココア', 1500, '/product.png', '無駄な添加物を徹底的に省いた高品質設計。腸内環境にも安心できるやさしい内容。プロテイン習慣を始めるのに最適なバランス。', 10, 10]
       );
       console.log('デフォルト商品を登録しました');
     }
@@ -274,7 +274,7 @@ async function initSQLite() {
     db.run(`
       INSERT INTO products (name, flavor, price, image_url, description, min_quantity, quantity_step)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, ['BASE', 'ココア味', 1500, '/product.png', '無駄な添加物を徹底的に省いた高品質設計。腸内環境にも安心できるやさしい内容。プロテイン習慣を始めるのに最適なバランス。', 10, 10]);
+    `, ['BASE', 'ココア', 1500, '/product.png', '無駄な添加物を徹底的に省いた高品質設計。腸内環境にも安心できるやさしい内容。プロテイン習慣を始めるのに最適なバランス。', 10, 10]);
     console.log('デフォルト商品を登録しました');
   }
 
