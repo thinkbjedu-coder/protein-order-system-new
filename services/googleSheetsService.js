@@ -66,7 +66,10 @@ class GoogleSheetsService {
 
         // 優先度2: "商品名 (フレーバー)" の形式 (標準フォーマット)
         if (product.flavor) {
+            // 半角括弧版
             searchCandidates.push(`${product.name} (${product.flavor})`);
+            // 全角括弧版も追加
+            searchCandidates.push(`${product.name}（${product.flavor}）`);
         } else {
             searchCandidates.push(product.name);
         }
@@ -124,7 +127,7 @@ class GoogleSheetsService {
                 return {
                     valid: false,
                     stock: currentStock,
-                    message: `在庫不足です（残り${currentStock}袋）`
+                    message: `恐れ入りますが、現在${currentStock}袋までのご注文となります`
                 };
             }
 
