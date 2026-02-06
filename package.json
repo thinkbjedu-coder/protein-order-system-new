@@ -24,6 +24,7 @@
         "express-rate-limit": "^7.1.5",
         "express-session": "^1.17.3",
         "fontkit": "^2.0.4",
+        "googleapis": "^128.0.0",
         "helmet": "^7.1.0",
         "multer": "^2.0.2",
         "nodemailer": "^7.0.11",
@@ -31,4 +32,5 @@
         "pg": "^8.11.3",
         "sql.js": "^1.10.3"
     }
+
 }
