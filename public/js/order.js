@@ -172,6 +172,10 @@ orderForm.addEventListener('submit', async (e) => {
         const modalProductName = document.querySelector('#confirm-modal span[style*="font-weight: var(--font-weight-bold)"]');
         if (modalProductName) modalProductName.textContent = `${currentProduct.name} ${currentProduct.flavor ? `(${currentProduct.flavor})` : ''}`;
 
+        // 前回のエラーメッセージをクリア
+        const errorDiv = document.getElementById('modal-error-message');
+        if (errorDiv) errorDiv.style.display = 'none';
+
         // モーダルを表示
         openModal('confirm-modal');
 
@@ -206,7 +210,13 @@ confirmBtn.addEventListener('click', async () => {
         }, 1500);
 
     } catch (error) {
-        showAlert(error.message, 'error');
+        // モーダル内にエラーを表示
+        const errorDiv = document.getElementById('modal-error-message');
+        const errorText = document.getElementById('modal-error-text');
+        if (errorDiv && errorText) {
+            errorText.textContent = error.message;
+            errorDiv.style.display = 'block';
+        }
         hideLoading(confirmBtn);
     }
 });

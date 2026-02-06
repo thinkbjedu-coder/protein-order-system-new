@@ -219,6 +219,12 @@
                 <button type="button" class="modal-close" onclick="closeModal('confirm-modal')">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- エラーメッセージ表示エリア -->
+                <div id="modal-error-message"
+                    style="display: none; background-color: #fee; border-left: 4px solid #dc3545; padding: var(--spacing-md); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-lg);">
+                    <strong style="color: #dc3545;">⚠️ エラー</strong>
+                    <p id="modal-error-text" style="margin: var(--spacing-xs) 0 0 0; color: #721c24;"></p>
+                </div>
                 <div
                     style="background-color: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-lg);">
                     <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
